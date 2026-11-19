@@ -8,3 +8,11 @@ Firmware Arduino para el ESP32. Envía la temperatura del DS18B20 al backend de 
 4. Vincula el código `SENSOR_CODE` a un transformador real en **Activos** y comprueba que la lectura aparezca con origen **Hardware**. El monitor serie a 115200 baudios muestra el resultado del envío.
 
 El firmware envía lecturas a `POST /api/telemetry/readings`. PostgreSQL y las migraciones de Flyway forman parte del repositorio del backend.
+
+## Guías
+
+- [explicar el cambio de Wi-Fi del ESP32](docs/portal-wifi.md)
+- [explicar la conexión HTTPS del ESP32](docs/conexion-nube.md)
+- [explicar cómo vincular el código del sensor](docs/codigo-sensor.md)
+- [registrar diagnóstico de conexión y lecturas](docs/diagnostico.md)
+- [añadir checklist de prueba física del ESP32](docs/checklist-placa.md)
