@@ -13,6 +13,8 @@ constexpr unsigned long CONNECT_TIMEOUT_MS = 30000;
 constexpr unsigned long PORTAL_CLOSE_MS = 12000;
 constexpr char STORAGE_NAMESPACE[] = "gridmind-wifi";
 constexpr char STORAGE_KEY[] = "credentials";
+constexpr char SENSOR_CODE_KEY[] = "sensor-code";
+constexpr unsigned int MAX_SENSOR_CODE_LENGTH = 50;
 const IPAddress portalIp(192, 168, 4, 1);
 WebServer portal(portalIp, 80);
 
@@ -24,7 +26,10 @@ struct Credentials {
 Credentials saved {};
 Credentials pending {};
 String formToken;
+String activeSensorCode;
+String suggestedSensorCode;
 const char *message = "";
+const char *closeMessage = "";
 unsigned long pressedAt = 0;
 unsigned long lastRetryAt = 0;
 unsigned long attemptAt = 0;
@@ -45,10 +50,40 @@ void sendPage(int code, const String &body) {
                        "<title>Wi-Fi de GridMind</title><h1>Wi-Fi de GridMind</h1>")) + body);
 }
 
+bool validSensorCode(const String &code) {
+  if (code.isEmpty() || code.length() > MAX_SENSOR_CODE_LENGTH) {
+    return false;
+  }
+  for (unsigned int index = 0; index < code.length(); ++index) {
+    const char value = code[index];
+    if (!((value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z')
+        || (value >= '0' && value <= '9') || value == '-' || value == '_' || value == '.')) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void redirectToPortal() {
+  portal.sendHeader("Location", "/");
+  portal.send(303, "text/plain", "");
+}
+
+bool canUpdatePortal() {
+  if (portal.arg("token") != formToken) {
+    portal.send(403, "text/plain", "Abre el formulario desde la red de configuracion.");
+    return false;
+  }
+  if (connecting || attemptQueued || closePending) {
+    portal.send(409, "text/plain", "Ya hay una configuracion en curso.");
+    return false;
+  }
+  return true;
+}
+
 void showForm() {
   if (closePending) {
-    sendPage(200, F("<p>Red guardada. El portal se cerrará automáticamente. "
-                    "Ya puedes volver a tu red habitual.</p>"));
+    sendPage(200, closeMessage);
     return;
   }
   if (attemptQueued || connecting) {
@@ -59,26 +94,68 @@ void showForm() {
   }
 
   String body = message;
-  body += F("<form method='post' action='/wifi'>"
+  body += F("<h2>Sensor de temperatura</h2>"
+            "<p>Copia este código y pégalo en GridMind, en Activos → Vincular sensor.</p>"
+            "<form method='post' action='/sensor'>"
+            "<label>Código del sensor<br><input name='code' maxlength='50' required value='");
+  body += activeSensorCode;
+  body += F("'></label><input type='hidden' name='token' value='");
+  body += formToken;
+  body += F("'><p><button type='submit'>Guardar código</button> "
+            "<button type='submit' name='automatic' value='1' formnovalidate>Usar código de esta placa</button></p></form>"
+            "<h2>Red Wi-Fi</h2>"
+            "<form method='post' action='/wifi'>"
             "<label>Nombre exacto de la red Wi-Fi (2,4 GHz)<br>"
             "<input name='ssid' maxlength='32' required></label><p>"
             "<label>Contraseña de la red<br>"
             "<input name='password' type='password' maxlength='64'></label></p>"
             "<input type='hidden' name='token' value='");
   body += formToken;
-  body += F("'><button>Conectar y guardar</button></form>");
+  body += F("'><button>Conectar y guardar Wi-Fi</button></form>");
+  if (saved.ssid[0] != '\0') {
+    body += F("<form method='post' action='/finish'><input type='hidden' name='token' value='");
+    body += formToken;
+    body += F("'><p><button>Cerrar portal y reanudar telemetría</button></p></form>");
+  }
   sendPage(200, body);
 }
 
+void submitSensorCode() {
+  if (!canUpdatePortal()) return;
+
+  String code = portal.hasArg("automatic") ? suggestedSensorCode : portal.arg("code");
+  code.trim();
+  if (!validSensorCode(code)) {
+    message = "<p>Usa de 1 a 50 letras, números, guiones, puntos o guiones bajos.</p>";
+    redirectToPortal();
+    return;
+  }
+
+  Preferences storage;
+  if (!storage.begin(STORAGE_NAMESPACE, false)
+      || storage.putString(SENSOR_CODE_KEY, code) != code.length()) {
+    message = "<p>No se pudo guardar el código. Inténtalo nuevamente.</p>";
+  } else {
+    activeSensorCode = code;
+    message = "<p>Código guardado. Cópialo antes de cerrar el portal.</p>";
+  }
+  redirectToPortal();
+}
+
+void finishSetup() {
+  if (!canUpdatePortal()) return;
+  if (saved.ssid[0] == '\0') {
+    portal.send(409, "text/plain", "Configura la red Wi-Fi antes de cerrar el portal.");
+    return;
+  }
+  closeMessage = "<p>El portal se cerrará en unos segundos. Ya puedes volver a tu red habitual.</p>";
+  savedAt = millis();
+  closePending = true;
+  redirectToPortal();
+}
+
 void submitCredentials() {
-  if (portal.arg("token") != formToken) {
-    portal.send(403, "text/plain", "Abre el formulario desde la red de configuracion.");
-    return;
-  }
-  if (connecting || attemptQueued || closePending) {
-    portal.send(409, "text/plain", "Ya hay una configuracion en curso.");
-    return;
-  }
+  if (!canUpdatePortal()) return;
 
   const String ssid = portal.arg("ssid");
   const String password = portal.arg("password");
@@ -95,8 +172,7 @@ void submitCredentials() {
   password.toCharArray(pending.password, sizeof(pending.password));
   attemptQueued = true;
   attemptAt = millis();
-  portal.sendHeader("Location", "/");
-  portal.send(303, "text/plain", "");
+  redirectToPortal();
 }
 
 void startPortal() {
@@ -109,7 +185,7 @@ void startPortal() {
   WiFi.mode(WIFI_AP_STA);
   if (!WiFi.softAPConfig(portalIp, portalIp, IPAddress(255, 255, 255, 0))
       || !WiFi.softAP(apName, WIFI_SETUP_PASSWORD, 1, false, 2)) {
-    Serial.println("No se pudo iniciar el portal Wi-Fi.");
+    Serial.println("Could not start the Wi-Fi setup portal.");
     WiFi.mode(WIFI_STA);
     return;
   }
@@ -121,7 +197,7 @@ void startPortal() {
   message = "";
   portal.begin();
   portalOpen = true;
-  Serial.printf("Configuración Wi-Fi: conecta a %s y abre http://192.168.4.1\n", apName);
+  Serial.printf("Wi-Fi setup: connect to %s and open http://192.168.4.1\n", apName);
 }
 
 void connectSaved() {
@@ -131,12 +207,23 @@ void connectSaved() {
   }
 }
 
-void begin() {
+void begin(const char *legacySensorCode) {
+  char generated[24];
+  snprintf(generated, sizeof(generated), "GM-%012llX-TMP",
+           static_cast<unsigned long long>(ESP.getEfuseMac() & 0xFFFFFFFFFFFFULL));
+  suggestedSensorCode = generated;
+  activeSensorCode = legacySensorCode;
+  if (!validSensorCode(activeSensorCode)) {
+    activeSensorCode = suggestedSensorCode;
+  }
+
   pinMode(SETUP_PIN, INPUT_PULLUP);
   WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
   Preferences storage;
   if (storage.begin(STORAGE_NAMESPACE, true)) {
+    const String storedCode = storage.getString(SENSOR_CODE_KEY, activeSensorCode);
+    if (validSensorCode(storedCode)) activeSensorCode = storedCode;
     if (storage.getBytesLength(STORAGE_KEY) == sizeof(saved)) {
       if (storage.getBytes(STORAGE_KEY, &saved, sizeof(saved)) != sizeof(saved)) {
         saved = {};
@@ -154,6 +241,8 @@ void begin() {
   }
   portal.on("/", HTTP_GET, showForm);
   portal.on("/wifi", HTTP_POST, submitCredentials);
+  portal.on("/sensor", HTTP_POST, submitSensorCode);
+  portal.on("/finish", HTTP_POST, finishSetup);
   if (saved.ssid[0] == '\0') {
     startPortal();
   } else {
@@ -193,8 +282,9 @@ void update(unsigned long now) {
           && storage.putBytes(STORAGE_KEY, &pending, sizeof(pending)) == sizeof(pending)) {
         saved = pending;
         savedAt = millis();
+        closeMessage = "<p>Red guardada. El portal se cerrará automáticamente. Ya puedes volver a tu red habitual.</p>";
         closePending = true;
-        Serial.println("Nueva red Wi-Fi guardada.");
+        Serial.println("New Wi-Fi network saved.");
       } else {
         message = "<p>No se pudo guardar la red. Inténtalo nuevamente.</p>";
         WiFi.disconnect();
@@ -222,6 +312,10 @@ void update(unsigned long now) {
     WiFi.reconnect();
     lastRetryAt = millis();
   }
+}
+
+const String &sensorCode() {
+  return activeSensorCode;
 }
 
 bool isConfiguring() {

@@ -25,7 +25,7 @@ constexpr uint8_t MPU6050_PWR_MGMT_1 = 0x6B;
 constexpr uint8_t MPU6050_ACCEL_CONFIG = 0x1C;
 constexpr uint8_t MPU6050_ACCEL_XOUT_H = 0x3B;
 
-constexpr char SENSOR_CODE[] = "SN-001-TMP";
+constexpr char LEGACY_SENSOR_CODE[] = "SN-001-TMP";
 constexpr char SENSOR_UNIT[] = "°C";
 
 OneWire oneWire(DS18B20_PIN);
@@ -95,18 +95,18 @@ void findAndInitializeMpu() {
     mpuAddress = address;
     uint8_t identity = 0;
     if (readMpuRegister(MPU6050_WHO_AM_I, identity)) {
-      Serial.printf("MPU6050 encontrado en 0x%02X; WHO_AM_I=0x%02X\n",
+      Serial.printf("MPU6050 found at 0x%02X; WHO_AM_I=0x%02X\n",
                     mpuAddress, identity);
       if (!writeMpuRegister(MPU6050_PWR_MGMT_1, 0x00) ||
           !writeMpuRegister(MPU6050_ACCEL_CONFIG, 0x00)) {
-        Serial.println("ERROR: no se pudo inicializar el MPU6050.");
+        Serial.println("ERROR: Could not initialize the MPU6050.");
         mpuAddress = 0;
       }
       return;
     }
   }
   mpuAddress = 0;
-  Serial.println("ERROR: MPU6050 no detectado. Revisa VCC, GND, SDA y SCL.");
+  Serial.println("ERROR: MPU6050 not detected. Check VCC, GND, SDA, and SCL.");
 }
 
 void printPotentiometers() {
@@ -115,18 +115,18 @@ void printPotentiometers() {
   const float pot1Voltage = pot1 * (3.3f / 4095.0f);
   const float pot2Voltage = pot2 * (3.3f / 4095.0f);
 
-  Serial.printf("Pot1 GPIO34: %d (aprox. %.2f V) | Pot2 GPIO35: %d (aprox. %.2f V)\n",
+  Serial.printf("Pot1 GPIO34: %d (approx. %.2f V) | Pot2 GPIO35: %d (approx. %.2f V)\n",
                 pot1, pot1Voltage, pot2, pot2Voltage);
 
   if (pot1 < 1365) {
     setLeds(true, false, false);
-    Serial.println("LED de prueba: VERDE (gira Pot1 para cambiar)");
+    Serial.println("Test LED: GREEN (turn Pot1 to change)");
   } else if (pot1 < 2730) {
     setLeds(false, true, false);
-    Serial.println("LED de prueba: AMARILLO (gira Pot1 para cambiar)");
+    Serial.println("Test LED: YELLOW (turn Pot1 to change)");
   } else {
     setLeds(false, false, true);
-    Serial.println("LED de prueba: ROJO (gira Pot1 para cambiar)");
+    Serial.println("Test LED: RED (turn Pot1 to change)");
   }
 }
 
@@ -134,7 +134,7 @@ bool printTemperature(float &celsius) {
   temperatureSensor.requestTemperatures();
   celsius = temperatureSensor.getTempCByIndex(0);
   if (celsius == DEVICE_DISCONNECTED_C) {
-    Serial.println("DS18B20: no detectado. Revisa VCC, GND, DATA y la resistencia de 4.7k.");
+    Serial.println("DS18B20 not detected. Check VCC, GND, DATA, and the 4.7 kΩ resistor.");
     return false;
   }
   Serial.printf("DS18B20 GPIO25: %.2f °C\n", celsius);
@@ -149,7 +149,7 @@ bool synchronizeSystemClock() {
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
   struct tm timeInfo {};
   if (!getLocalTime(&timeInfo, 10000)) {
-    Serial.println("Telemetría HTTPS no enviada: no se pudo sincronizar el reloj para validar el certificado.");
+    Serial.println("HTTPS telemetry skipped: Could not synchronize the clock for certificate validation.");
     return false;
   }
   return true;
@@ -157,11 +157,11 @@ bool synchronizeSystemClock() {
 
 void sendTemperature(float celsius) {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("Telemetría no enviada: ESP32 sin conexión Wi-Fi.");
+    Serial.println("Telemetry skipped: ESP32 is disconnected from Wi-Fi.");
     return;
   }
   if (strlen(DEVICE_TOKEN) < 32) {
-    Serial.println("Telemetría no enviada: DEVICE_TOKEN debe tener al menos 32 caracteres.");
+    Serial.println("Telemetry skipped: DEVICE_TOKEN must be at least 32 characters long.");
     return;
   }
 
@@ -173,7 +173,7 @@ void sendTemperature(float celsius) {
   bool requestStarted = false;
   if (strncmp(TELEMETRY_URL, "https://", 8) == 0) {
     if (TELEMETRY_ROOT_CA[0] == '\0') {
-      Serial.println("Telemetría HTTPS no enviada: configura el certificado raíz en TELEMETRY_ROOT_CA.");
+      Serial.println("HTTPS telemetry skipped: Set the root CA in TELEMETRY_ROOT_CA.");
       return;
     }
     if (!synchronizeSystemClock()) {
@@ -182,22 +182,22 @@ void sendTemperature(float celsius) {
     secureClient.setCACert(TELEMETRY_ROOT_CA);
     requestStarted = http.begin(secureClient, TELEMETRY_URL);
   } else if (strncmp(TELEMETRY_URL, "http://", 7) == 0) {
-    Serial.println("ADVERTENCIA: HTTP transmite el token sin cifrar; úsalo solo en una red local aislada.");
+    Serial.println("WARNING: HTTP sends the token without encryption. Use it only on an isolated local network.");
     requestStarted = http.begin(client, TELEMETRY_URL);
   } else {
-    Serial.println("ERROR: TELEMETRY_URL debe comenzar con http:// o https://.");
+    Serial.println("ERROR: TELEMETRY_URL must start with http:// or https://.");
     return;
   }
 
   if (!requestStarted) {
-    Serial.println("ERROR: no se pudo iniciar la petición HTTP. Revisa TELEMETRY_URL.");
+    Serial.println("ERROR: Could not start the HTTP request. Check TELEMETRY_URL.");
     return;
   }
 
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Device-Token", DEVICE_TOKEN);
   String payload = "[{\"sensorCode\":\"";
-  payload += SENSOR_CODE;
+  payload += GridMindWifi::sensorCode();
   payload += "\",\"value\":";
   payload += String(celsius, 2);
   payload += ",\"unit\":\"";
@@ -206,10 +206,10 @@ void sendTemperature(float celsius) {
 
   const int statusCode = http.POST(payload);
   if (statusCode > 0) {
-    Serial.printf("GridMind respondió HTTP %d: %s\n",
+    Serial.printf("GridMind returned HTTP %d: %s\n",
                   statusCode, http.getString().c_str());
   } else {
-    Serial.printf("ERROR al enviar telemetría: %s\n",
+    Serial.printf("ERROR sending telemetry: %s\n",
                   http.errorToString(statusCode).c_str());
   }
   http.end();
@@ -217,21 +217,21 @@ void sendTemperature(float celsius) {
 
 void printMpuMeasurements() {
   if (mpuAddress == 0) {
-    Serial.println("MPU6050: sin lectura (no detectado).");
+    Serial.println("MPU6050: No reading (device not detected).");
     return;
   }
 
   int16_t ax, ay, az, rawTemperature, gx, gy, gz;
   if (!readMpuMeasurements(ax, ay, az, rawTemperature, gx, gy, gz)) {
-    Serial.println("MPU6050: error al leer datos I2C.");
+    Serial.println("MPU6050: Could not read I2C data.");
     return;
   }
 
-  Serial.printf("MPU6050 aceleracion (g): X=%.3f Y=%.3f Z=%.3f | ",
+  Serial.printf("MPU6050 acceleration (g): X=%.3f Y=%.3f Z=%.3f | ",
                 ax / 16384.0f, ay / 16384.0f, az / 16384.0f);
-  Serial.printf("giroscopio (°/s): X=%.2f Y=%.2f Z=%.2f | ",
+  Serial.printf("gyroscope (°/s): X=%.2f Y=%.2f Z=%.2f | ",
                 gx / 131.0f, gy / 131.0f, gz / 131.0f);
-  Serial.printf("temperatura interna: %.2f °C\n",
+  Serial.printf("internal temperature: %.2f °C\n",
                 rawTemperature / 340.0f + 36.53f);
 }
 
@@ -249,13 +249,13 @@ void setup() {
   temperatureSensor.begin();
   Wire.begin(MPU_SDA_PIN, MPU_SCL_PIN);
 
-  Serial.println("\n=== Prueba de componentes ESP32 ===");
+  Serial.println("\n=== ESP32 component test ===");
   findAndInitializeMpu();
-  Serial.println("Lecturas cada 2 segundos. Gira Pot1 para probar los LEDs.");
-  Serial.println("Los voltajes analogicos son aproximados; no son una calibracion.");
-  Serial.println("Telemetria GridMind: envía solo temperatura cada 10 segundos.");
-  Serial.println("HTTP sin cifrar: úsalo únicamente en una red privada aislada.");
-  GridMindWifi::begin();
+  Serial.println("Readings every 2 seconds. Turn Pot1 to test the LEDs.");
+  Serial.println("Analog voltage readings are approximate and uncalibrated.");
+  Serial.println("GridMind telemetry sends temperature only, every 10 seconds.");
+  Serial.println("Unencrypted HTTP is for isolated private networks only.");
+  GridMindWifi::begin(LEGACY_SENSOR_CODE);
 }
 
 void loop() {
@@ -273,7 +273,7 @@ void loop() {
   }
   lastReadAt = now;
 
-  Serial.println("\n--- Lecturas ---");
+  Serial.println("\n--- Readings ---");
   float celsius = 0.0f;
   const bool temperatureAvailable = printTemperature(celsius);
   printMpuMeasurements();
@@ -284,7 +284,7 @@ void loop() {
     if (temperatureAvailable) {
       sendTemperature(celsius);
     } else {
-      Serial.println("Telemetría omitida: no hay lectura válida del DS18B20.");
+      Serial.println("Telemetry skipped: No valid DS18B20 reading.");
     }
   }
 }
