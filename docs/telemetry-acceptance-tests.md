@@ -13,3 +13,7 @@ Turn only the current knob on the USB-powered prototype. Check that values near 
 ## HW-04 · Independent analog channels
 
 Hold both knobs steady for two batches to establish normal variation. Move GPIO34, then GPIO35, one at a time. Confirm that the other channel stays within its baseline variation.
+
+## HW-05 · DS18B20 detection
+
+Boot the board and open the serial monitor at 115200 baud. Check for a DS18B20 temperature line and compare it with the latest temperature measurement in GridMind.
