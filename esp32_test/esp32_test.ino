@@ -259,6 +259,13 @@ void setup() {
 }
 
 void loop() {
+  // Open Wi-Fi setup from the USB serial monitor using the P command.
+  while (Serial.available() > 0) {
+    if (Serial.read() == 'P') {
+      GridMindWifi::startPortal();
+    }
+  }
+
   const unsigned long now = millis();
   GridMindWifi::update(now);
   if (now - lastReadAt < READ_INTERVAL_MS) {
