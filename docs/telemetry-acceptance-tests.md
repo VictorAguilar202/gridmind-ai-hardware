@@ -25,3 +25,7 @@ Using a spare test board without an MPU-6050 connected, check the serial diagnos
 ## HW-07 · Sensor code persistence
 
 Record the active sensor code shown in the configuration portal. Restart the board and reopen the portal. Confirm the code is unchanged, then close the portal to resume telemetry.
+
+## HW-08 · Wi-Fi reconnection
+
+Turn off a dedicated test hotspot while the ESP32 is sending, then restore the same hotspot. Confirm the board resumes sending and GridMind receives a newer hardware timestamp.
