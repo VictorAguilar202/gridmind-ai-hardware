@@ -33,3 +33,7 @@ Turn off a dedicated test hotspot while the ESP32 is sending, then restore the s
 ## HW-09 · Payload format and units
 
 Capture a request using a private test receiver. Check that the body is a JSON array with temperature in °C, voltage in kV, current in A and, when present, vibration in mm/s. Do not save the token with the capture.
+
+## HW-10 · Standalone USB power
+
+Unplug the board from the computer and power it from a USB charger. Open GridMind through another internet connection and confirm that the hardware timestamp advances.
