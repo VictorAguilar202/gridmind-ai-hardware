@@ -17,3 +17,7 @@ Open the Serial Monitor at 115200 baud and press EN once. Check for the `ESP32 c
 ## Sensor code validation
 
 With a test board in setup mode, try a code containing a slash or an internal space. Verify that the portal rejects it and preserves the previous code. Then save a test code using only letters, digits or the permitted punctuation and verify the portal displays it. Restore the linked code before resuming telemetry.
+
+## Keep local configuration out of Git
+
+Run `git check-ignore esp32_test/gridmind_secrets.h` and `git ls-files -- esp32_test/gridmind_secrets.h`. The first command should show the ignored path and the second should show no tracked entry. Use `gridmind_secrets.example.h` for changes intended for Git.
