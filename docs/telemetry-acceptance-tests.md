@@ -21,3 +21,7 @@ Boot the board and open the serial monitor at 115200 baud. Check for a DS18B20 t
 ## HW-06 · Batch without an MPU-6050
 
 Using a spare test board without an MPU-6050 connected, check the serial diagnostic and send a batch. Expect temperature, voltage and current with no vibration entry.
+
+## HW-07 · Sensor code persistence
+
+Record the active sensor code shown in the configuration portal. Restart the board and reopen the portal. Confirm the code is unchanged, then close the portal to resume telemetry.
