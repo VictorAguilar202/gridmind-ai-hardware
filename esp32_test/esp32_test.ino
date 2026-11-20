@@ -6,6 +6,7 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
+#include <math.h>
 #include "gridmind_secrets.h"
 #include "wifi_setup.h"
 
@@ -27,6 +28,13 @@ constexpr uint8_t MPU6050_ACCEL_XOUT_H = 0x3B;
 
 constexpr char LEGACY_SENSOR_CODE[] = "SN-001-TMP";
 constexpr char SENSOR_UNIT[] = "°C";
+constexpr float ADC_FULL_SCALE = 4095.0f;
+constexpr float DEMO_VOLTAGE_MAX_KV = 15.0f;
+constexpr float DEMO_CURRENT_MAX_A = 500.0f;
+constexpr size_t VIBRATION_SAMPLES = 128;
+constexpr unsigned long VIBRATION_INTERVAL_MS = 5;
+constexpr float MPU_ACCEL_SCALE = 16384.0f;
+constexpr float GRAVITY_MM_PER_SECOND_SQUARED = 9806.65f;
 
 OneWire oneWire(DS18B20_PIN);
 DallasTemperature temperatureSensor(&oneWire);
@@ -109,9 +117,7 @@ void findAndInitializeMpu() {
   Serial.println("ERROR: MPU6050 not detected. Check VCC, GND, SDA, and SCL.");
 }
 
-void printPotentiometers() {
-  const int pot1 = analogRead(POT1_PIN);
-  const int pot2 = analogRead(POT2_PIN);
+void printPotentiometers(int pot1, int pot2) {
   const float pot1Voltage = pot1 * (3.3f / 4095.0f);
   const float pot2Voltage = pot2 * (3.3f / 4095.0f);
 
@@ -155,7 +161,64 @@ bool synchronizeSystemClock() {
   return true;
 }
 
-void sendTemperature(float celsius) {
+void appendReading(String &payload, float value, const char *unit,
+                   const char *demonstrationChannel = nullptr) {
+  if (payload.length() > 1) payload += ',';
+  payload += "{\"sensorCode\":\"";
+  payload += GridMindWifi::sensorCode();
+  payload += "\",\"value\":";
+  payload += String(value, 3);
+  payload += ",\"unit\":\"";
+  payload += unit;
+  payload += '"';
+  if (demonstrationChannel != nullptr) {
+    payload += ",\"demonstrationChannel\":\"";
+    payload += demonstrationChannel;
+    payload += '"';
+  }
+  payload += '}';
+}
+
+bool measureVibration(float &rmsSpeed) {
+  if (mpuAddress == 0) return false;
+
+  int16_t samples[VIBRATION_SAMPLES][3];
+  unsigned long sampleTimes[VIBRATION_SAMPLES];
+  float accelerationMean[3]{};
+  for (size_t i = 0; i < VIBRATION_SAMPLES; ++i) {
+    int16_t temperature, gx, gy, gz;
+    const auto sampleStart = millis();
+    sampleTimes[i] = micros();
+    if (!readMpuMeasurements(samples[i][0], samples[i][1], samples[i][2],
+                             temperature, gx, gy, gz)) return false;
+    for (size_t axis = 0; axis < 3; ++axis) accelerationMean[axis] += samples[i][axis];
+    const auto elapsed = millis() - sampleStart;
+    if (elapsed < VIBRATION_INTERVAL_MS) delay(VIBRATION_INTERVAL_MS - elapsed);
+  }
+
+  // Remove the constant gravity component before integrating each acceleration axis.
+  float squareSum = 0.0f;
+  for (size_t axis = 0; axis < 3; ++axis) {
+    const float mean = accelerationMean[axis] / VIBRATION_SAMPLES;
+    float speed = 0.0f;
+    float speedSum = 0.0f;
+    float speedSquareSum = 0.0f;
+    for (size_t i = 1; i < VIBRATION_SAMPLES; ++i) {
+      const float dt = (sampleTimes[i] - sampleTimes[i - 1]) * 0.000001f;
+      const float averageSample = (samples[i - 1][axis] + samples[i][axis]) * 0.5f;
+      speed += (averageSample - mean) * (GRAVITY_MM_PER_SECOND_SQUARED / MPU_ACCEL_SCALE) * dt;
+      speedSum += speed;
+      speedSquareSum += speed * speed;
+    }
+    const float count = VIBRATION_SAMPLES - 1;
+    const float meanSpeed = speedSum / count;
+    squareSum += fmaxf(0.0f, speedSquareSum / count - meanSpeed * meanSpeed);
+  }
+  rmsSpeed = sqrtf(squareSum);
+  return isfinite(rmsSpeed);
+}
+
+void sendTelemetry(const String &payload) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Telemetry skipped: ESP32 is disconnected from Wi-Fi.");
     return;
@@ -196,14 +259,6 @@ void sendTemperature(float celsius) {
 
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Device-Token", DEVICE_TOKEN);
-  String payload = "[{\"sensorCode\":\"";
-  payload += GridMindWifi::sensorCode();
-  payload += "\",\"value\":";
-  payload += String(celsius, 2);
-  payload += ",\"unit\":\"";
-  payload += SENSOR_UNIT;
-  payload += "\"}]";
-
   const int statusCode = http.POST(payload);
   if (statusCode > 0) {
     Serial.printf("GridMind returned HTTP %d: %s\n",
@@ -253,7 +308,7 @@ void setup() {
   findAndInitializeMpu();
   Serial.println("Readings every 2 seconds. Turn Pot1 to test the LEDs.");
   Serial.println("Analog voltage readings are approximate and uncalibrated.");
-  Serial.println("GridMind telemetry sends temperature only, every 10 seconds.");
+  Serial.println("GridMind sends temperature and available demonstration channels every 10 seconds.");
   Serial.println("Unencrypted HTTP is for isolated private networks only.");
   GridMindWifi::begin(LEGACY_SENSOR_CODE);
 }
@@ -277,14 +332,20 @@ void loop() {
   float celsius = 0.0f;
   const bool temperatureAvailable = printTemperature(celsius);
   printMpuMeasurements();
-  printPotentiometers();
+  const int pot1 = analogRead(POT1_PIN);
+  const int pot2 = analogRead(POT2_PIN);
+  printPotentiometers(pot1, pot2);
 
   if (!GridMindWifi::isConfiguring() && now - lastTelemetryAt >= TELEMETRY_INTERVAL_MS) {
     lastTelemetryAt = now;
-    if (temperatureAvailable) {
-      sendTemperature(celsius);
-    } else {
-      Serial.println("Telemetry skipped: No valid DS18B20 reading.");
-    }
+    String payload = "[";
+    payload.reserve(540);
+    if (temperatureAvailable) appendReading(payload, celsius, SENSOR_UNIT);
+    appendReading(payload, pot1 * (DEMO_VOLTAGE_MAX_KV / ADC_FULL_SCALE), "kV", "VOLTAGE");
+    appendReading(payload, pot2 * (DEMO_CURRENT_MAX_A / ADC_FULL_SCALE), "A", "CURRENT");
+    float rmsSpeed;
+    if (measureVibration(rmsSpeed)) appendReading(payload, rmsSpeed, "mm/s", "VIBRATION");
+    payload += ']';
+    sendTelemetry(payload);
   }
 }
