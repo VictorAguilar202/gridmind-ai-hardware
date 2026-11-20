@@ -1,7 +1,9 @@
-# Vincular un sensor físico
+# Link a physical sensor
 
-El campo `SENSOR_CODE` del firmware identifica el sensor de temperatura que el backend debe conocer. Cópialo exactamente en **Activos → Pendiente de conexión → Vincular sensor**.
+Open the ESP32 portal at `http://192.168.4.1`. Under **Sensor de temperatura**, copy the saved code and paste it into **Activos → Pendiente de conexión → Vincular sensor**.
 
-Cada código pertenece a un único transformador. Si el código ya está en uso, revisa a qué equipo está vinculado antes de configurar la placa.
+For an additional board, select **Usar código de esta placa** to generate and save its identifier, or enter your own. Keep the existing code if the board is already linked. Changing Wi-Fi preserves the sensor code.
 
-Mientras el equipo no reciba datos físicos, la interfaz muestra un aviso de espera. Cuando llegue la primera lectura, comprueba el valor, la unidad y la fecha de recepción.
+If Wi-Fi was already set up, select **Cerrar portal y reanudar telemetría** when done. Each code belongs to one transformer. If it is already in use, check which transformer owns it before reconfiguring the board.
+
+When the first hardware reading arrives, verify its value, unit, and timestamp.
