@@ -1,9 +1,9 @@
-# Prueba física antes de la entrega
+# Device verification checklist
 
-- [ ] Compilar el sketch con el núcleo Arduino para ESP32 y las bibliotecas OneWire y DallasTemperature.
-- [ ] Cargar el firmware y confirmar que detecta el DS18B20.
-- [ ] Registrar el Wi-Fi por el portal y reiniciar la placa. Verificar la reconexión.
-- [ ] Probar la llegada de lecturas por HTTPS desde una red diferente a la del computador.
-- [ ] Confirmar el origen **Hardware** y la fecha de la lectura en GridMind.
+- [ ] Compile the sketch with the ESP32 Arduino core and the OneWire and DallasTemperature libraries.
+- [ ] Upload the firmware and confirm detection of the DS18B20.
+- [ ] Save Wi-Fi settings through the portal and restart the board. Verify reconnection.
+- [ ] Verify HTTPS telemetry while the board and computer are on different networks.
+- [ ] Confirm the **Hardware** source and the reading timestamp in GridMind.
 
-Registra la placa, la fecha y el resultado de la prueba. Usa ejemplos sin credenciales en fotos y capturas del monitor.
+Record the board model, test date, and result. Keep credentials out of photos and serial-monitor screenshots.
