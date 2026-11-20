@@ -5,3 +5,7 @@ Use a USB-powered prototype and a test workspace. Pause the simulator before tes
 ## HW-02 · Voltage scale endpoints
 
 Turn only the voltage knob on the USB-powered prototype. Check that values near the two limits approach 0 and 15 kV in GridMind. Record the observed values as demonstration output.
+
+## HW-03 · Current scale endpoints
+
+Turn only the current knob on the USB-powered prototype. Check that values near the two limits approach 0 and 500 A. Record the observed values as demonstration output.
