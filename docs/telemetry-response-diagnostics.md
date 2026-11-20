@@ -17,3 +17,7 @@ If the HTTP 409 message mentions the simulator, open **Operaciones → Entrada d
 ## Distinguish clock and certificate errors
 
 If the serial log says the clock could not synchronize, confirm the network allows NTP. If it reports a missing root CA, check the local HTTPS certificate configuration. Keep certificate verification enabled when retesting.
+
+## Interpret each telemetry attempt
+
+Look for `GridMind returned HTTP` to identify a server response. HTTP 201 means the batch was accepted. `ERROR sending telemetry` means the client could not complete the request. `Telemetry skipped` means the firmware detected a missing prerequisite before sending. Save the timestamp and status without recording credentials.
