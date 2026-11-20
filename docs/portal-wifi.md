@@ -1,9 +1,9 @@
-# Cambiar la red del ESP32
+# Change the ESP32 Wi-Fi network
 
-Con el firmware cargado y sin una red configurada, el dispositivo abre una red temporal cuyo nombre empieza por `GridMind-Setup-`. También puedes abrirla manteniendo presionado durante tres segundos el pulsador entre GPIO27 y GND.
+If no network is configured, the firmware opens a temporary network named `GridMind-Setup-…`. On a classic ESP32 with BOOT wired to GPIO0, hold **BOOT** for three seconds after the board starts. You can also send uppercase `P` over USB at 115200 baud to open the portal.
 
-1. Conéctate desde tu computador o celular con la clave local `WIFI_SETUP_PASSWORD`.
-2. Abre `http://192.168.4.1`. Si tu equipo avisa que la red temporal no tiene Internet, conserva esa conexión.
-3. Indica el nombre y la contraseña de la red de 2,4 GHz. El ESP32 prueba la conexión antes de guardar el cambio.
+1. Connect from a computer or phone with the local `WIFI_SETUP_PASSWORD`.
+2. Open `http://192.168.4.1`. If prompted, stay connected to the temporary network.
+3. Enter the 2.4 GHz network name and password. The ESP32 tests the connection before saving.
 
-Si la red temporal desaparece durante la prueba, inténtalo de nuevo desde la misma dirección. Si la conexión falla, el firmware conserva la última configuración válida.
+If the temporary network disappears during testing, reconnect and open the same address. A failed connection preserves the last working configuration.
