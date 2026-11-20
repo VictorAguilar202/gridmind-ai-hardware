@@ -9,3 +9,7 @@ Turn only the voltage knob on the USB-powered prototype. Check that values near 
 ## HW-03 · Current scale endpoints
 
 Turn only the current knob on the USB-powered prototype. Check that values near the two limits approach 0 and 500 A. Record the observed values as demonstration output.
+
+## HW-04 · Independent analog channels
+
+Hold both knobs steady for two batches to establish normal variation. Move GPIO34, then GPIO35, one at a time. Confirm that the other channel stays within its baseline variation.
