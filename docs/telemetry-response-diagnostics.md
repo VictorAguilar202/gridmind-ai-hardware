@@ -13,3 +13,7 @@ If the backend returns HTTP 404 with a sensor-related message, compare the exact
 ## Conflict while the simulator is active
 
 If the HTTP 409 message mentions the simulator, open **Operaciones → Entrada de telemetría** and pause simulation for that account. After another batch, look for HTTP 201. A generic conflict message warrants checking the backend logs.
+
+## Distinguish clock and certificate errors
+
+If the serial log says the clock could not synchronize, confirm the network allows NTP. If it reports a missing root CA, check the local HTTPS certificate configuration. Keep certificate verification enabled when retesting.
