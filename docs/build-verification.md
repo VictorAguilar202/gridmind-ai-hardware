@@ -13,3 +13,7 @@ After Verify succeeds, record the reported program storage and global memory usa
 ## Serial boot output
 
 Open the Serial Monitor at 115200 baud and press EN once. Check for the `ESP32 component test` banner and at least one reading cycle. If the port is missing, verify the USB data connection. If text is unreadable, recheck the baud rate.
+
+## Sensor code validation
+
+With a test board in setup mode, try a code containing a slash or an internal space. Verify that the portal rejects it and preserves the previous code. Then save a test code using only letters, digits or the permitted punctuation and verify the portal displays it. Restore the linked code before resuming telemetry.
