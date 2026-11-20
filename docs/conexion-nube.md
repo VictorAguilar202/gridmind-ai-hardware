@@ -1,8 +1,8 @@
-# Conectar el ESP32 al backend publicado
+# Connect the ESP32 to a deployed backend
 
-- Configura `TELEMETRY_URL` con la URL HTTPS del backend y la ruta `/api/telemetry/readings`.
-- Copia el certificado raíz PEM correspondiente en `TELEMETRY_ROOT_CA`.
-- Usa el token de telemetría configurado en el backend. Escribe estos valores en el archivo local ignorado por Git.
-- Carga el firmware una vez. Los cambios posteriores de Wi-Fi se pueden guardar desde el portal local.
+- Set `TELEMETRY_URL` to the public HTTPS backend URL with the path `/api/telemetry/readings`.
+- Put the matching PEM root CA in `TELEMETRY_ROOT_CA`.
+- Use the same telemetry token as the backend. Keep these values in the local file excluded from Git.
+- Upload the firmware once. Subsequent Wi-Fi changes can be made through the portal.
 
-Para probarlo fuera de tu red, conecta la placa al hotspot de un celular y abre el panel desde otro acceso a Internet. Busca una lectura nueva con origen **Hardware**.
+To verify connectivity across networks, connect the board to a phone hotspot and open GridMind from another internet connection. Look for a recent reading labeled **Hardware**.
