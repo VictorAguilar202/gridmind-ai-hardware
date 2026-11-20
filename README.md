@@ -1,18 +1,18 @@
 # GridMind AI · Hardware
 
-Firmware Arduino para el ESP32. Envía la temperatura del DS18B20 al backend de GridMind.
+Arduino firmware for the ESP32 sends DS18B20 temperature readings to GridMind.
 
-1. Abre `esp32_test/esp32_test.ino` en Arduino IDE con el núcleo Arduino para ESP32 y las bibliotecas OneWire y DallasTemperature.
-2. Copia `esp32_test/gridmind_secrets.example.h` a `esp32_test/gridmind_secrets.h`. Define la clave del portal Wi-Fi, el token de telemetría, la URL HTTPS pública del backend y su certificado raíz. Mantén el archivo de secretos en tu equipo.
-3. Carga el firmware. Con las credenciales Wi-Fi vacías, conéctate a la red temporal `GridMind-Setup-XXXXXX` y abre `http://192.168.4.1` para registrar la red de 2,4 GHz. Para volver a abrir el portal, presiona durante tres segundos el pulsador conectado entre GPIO27 y GND.
-4. Vincula el código `SENSOR_CODE` a un transformador real en **Activos** y comprueba que la lectura aparezca con origen **Hardware**. El monitor serie a 115200 baudios muestra el resultado del envío.
+1. Open `esp32_test/esp32_test.ino` in Arduino IDE with the ESP32 Arduino core and the OneWire and DallasTemperature libraries.
+2. Copy `esp32_test/gridmind_secrets.example.h` to `esp32_test/gridmind_secrets.h`. Set the Wi-Fi portal password, telemetry token, public HTTPS backend URL, and root CA. Keep this file local.
+3. Upload the firmware and [configure Wi-Fi through the portal](docs/portal-wifi.md).
+4. [Link the temperature sensor](docs/codigo-sensor.md) under **Activos**. Check that the new reading is labeled **Hardware**. The Serial Monitor at 115200 baud reports the result.
 
-El firmware envía lecturas a `POST /api/telemetry/readings`. PostgreSQL y las migraciones de Flyway forman parte del repositorio del backend.
+The firmware sends readings to `POST /api/telemetry/readings`. PostgreSQL and the Flyway migrations belong in the backend repository.
 
-## Guías
+## Guides
 
-- [explicar el cambio de Wi-Fi del ESP32](docs/portal-wifi.md)
-- [explicar la conexión HTTPS del ESP32](docs/conexion-nube.md)
-- [explicar cómo vincular el código del sensor](docs/codigo-sensor.md)
-- [registrar diagnóstico de conexión y lecturas](docs/diagnostico.md)
-- [añadir checklist de prueba física del ESP32](docs/checklist-placa.md)
+- [Configure Wi-Fi](docs/portal-wifi.md)
+- [Connect to the public HTTPS backend](docs/conexion-nube.md)
+- [Link the temperature sensor](docs/codigo-sensor.md)
+- [Troubleshoot connectivity and readings](docs/diagnostico.md)
+- [Verify the physical device](docs/checklist-placa.md)
