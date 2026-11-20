@@ -29,3 +29,7 @@ Record the active sensor code shown in the configuration portal. Restart the boa
 ## HW-08 · Wi-Fi reconnection
 
 Turn off a dedicated test hotspot while the ESP32 is sending, then restore the same hotspot. Confirm the board resumes sending and GridMind receives a newer hardware timestamp.
+
+## HW-09 · Payload format and units
+
+Capture a request using a private test receiver. Check that the body is a JSON array with temperature in °C, voltage in kV, current in A and, when present, vibration in mm/s. Do not save the token with the capture.
