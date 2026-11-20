@@ -6,7 +6,7 @@
 
 namespace GridMindWifi {
 
-constexpr uint8_t SETUP_PIN = 27;
+constexpr uint8_t SETUP_PIN = 0;
 constexpr unsigned long BUTTON_HOLD_MS = 3000;
 constexpr unsigned long RETRY_MS = 10000;
 constexpr unsigned long CONNECT_TIMEOUT_MS = 30000;
